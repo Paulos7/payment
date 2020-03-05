@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="6761184e-2e37-44a8-8aa5-d78a47f154b7" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="9f4e1647-8331-47da-8dd8-270c8b793a02" >
+		<http:request-connection protocol="HTTPS" host="bitbucket.org" port="443" >
+			<http:authentication >
+				<http:basic-authentication username="roba1" password="611533Ha"/>
+			</http:authentication>
+		</http:request-connection>
+	</http:request-config>
+	<flow name="getRepo" doc:id="0c303961-0484-4b37-a5d4-7b88d27e9211" >
+		<http:listener doc:name="Listener" doc:id="de0962f5-2e4d-49e0-9b96-fedb74a963dc" config-ref="HTTP_Listener_config" path="/getRepo"/>
+		<logger level="INFO" doc:name="Logger" doc:id="f051889a-fa43-4913-bd3a-cf23ffbba326" message="this is a test"/>
+		<http:request method="PUT" doc:name="getRepo" doc:id="602c78c6-de97-4c47-abca-9e9c0dcde6be" config-ref="HTTP_Request_configuration" path="/api/2.0/repositories/gdhanraj/test123/test2.txt"/>
+		<logger level="INFO" doc:name="Logger" doc:id="150ecc62-2ef0-435a-8f18-31f914a34ec6" message="#[payload]"/>
+	</flow>
+	<flow name="bitbucketFlow" doc:id="3ac8fe8a-0c35-41e8-b70f-80ff7216ae2d" >
+		<http:listener doc:name="Listener" doc:id="b7497a64-74c6-4b90-a27f-ab27b4423817" config-ref="HTTP_Listener_config" path="/putFiles"/>
+		<logger level="INFO" doc:name="Logger" doc:id="64fa942e-d40d-4085-ad90-2cb7b179860d" message="Uploading File..."/>
+		<file:read doc:name="Read" doc:id="705fe559-3175-478e-96c5-e0fd1c4f41d8" path="C:\mule4\bitbucketv2.1-_1_\src\test\resources\api.txt"/>
+		<logger level="INFO" doc:name="Logger" doc:id="8368ce13-eb2c-41ea-9224-0db5839a7f68" message="#[attributes.fileName]" />
+		<ee:transform doc:name="Transform Message" doc:id="1d8c1944-a1e7-4b31-93f8-75e05ff1aa0c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output multipart/form-data
+---
+{
+	parts: {
+		json: {
+			headers: {
+				"Content-Disposition": {
+					name: attributes.fileName,
+					subtype: "form-data",
+				},
+				"Content-Type": "text/plain",
+				"Content-Transfer-Encoding": "binary"
+			},
+			content: payload
+		}
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="Request" doc:id="65d4d011-a683-4557-88b0-1c990ba1d204" config-ref="HTTP_Request_configuration" path="/api/2.0/repositories/roba1/mule_poc/src/" outputMimeType="application/json">
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="0486b4bf-ea41-4ec5-bf58-37376a08929e"/>
+	</flow>
+	
+	<flow name="bitbucketFlow_bulk" doc:id="9dc0ddbc-fd37-4b48-893e-8959f5f494ac" >
+		<http:listener doc:name="Listener" doc:id="cb9ed7fa-8d9a-4b91-9b97-091d7f70d38d" config-ref="HTTP_Listener_config" path="/putFiles/bulk"/>
+		<logger level="INFO" doc:name="Logger" doc:id="e3e51fca-af88-4209-b54d-4a7ffbdd2b0a" message="Uploading File..."/>
+		<file:list doc:name="List" doc:id="6e83f333-ea2c-4eba-b42a-01ce66b114d3" directoryPath="C:\Users\gutem\Desktop\Bitbucket"/>
+		<logger level="INFO" doc:name="Logger" doc:id="59315127-087b-41bb-b784-5aefd1399ced" message="payload   &gt;&gt;&gt;  #[payload] and Message &gt;&gt;&gt; #[message]" />
+		<foreach doc:name="For Each" doc:id="5215ea08-3288-4d96-b022-cd47f05ddf45" >
+			<logger level="INFO" doc:name="Logger" doc:id="349b414e-d937-414c-b90b-ed074948ded1" message="Inside for each &gt;&gt;&gt; #[payload]"/>
+			<ee:transform doc:name="Transform Message" doc:id="47d38568-6fa6-4003-b37a-3a59863fe4a4">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output multipart/form-data
+---
+{
+	parts: {
+		json: {
+			headers: {
+				"Content-Disposition": {
+					name: attributes.name,
+					subtype: "form-data",
+				},
+				"Content-Type": "text/plain",
+				"Content-Transfer-Encoding": "binary"
+			},
+			content: payload
+		}
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			<http:request method="POST" doc:name="Request" doc:id="4e1417ce-bab1-40b1-8539-d3466886543f" config-ref="HTTP_Request_configuration" path="/api/2.0/repositories/roba1/mule_poc/src/" outputMimeType="application/json">
+		</http:request>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="c0bae931-80ed-4787-973b-cfb10c048dd4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	status: "Success"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="90a96315-3ee5-4b69-b344-29f7bd17ec84"/>
+	</flow>
+</mule>
